@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Square, FolderKanban, Tag, DollarSign } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { api } from '@/hooks/useApi';
+import { useToast } from '@/components/ui/toast';
 
 interface Project {
   id: string;
@@ -30,6 +31,7 @@ interface TimeEntry {
 }
 
 export function TimerBar({ onEntryChange }: { onEntryChange?: () => void }) {
+  const { success, error: showError } = useToast();
   const [running, setRunning] = useState<TimeEntry | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [description, setDescription] = useState('');
@@ -89,8 +91,9 @@ export function TimerBar({ onEntryChange }: { onEntryChange?: () => void }) {
         }),
       });
       setRunning(entry);
+      success('Timer started');
       onEntryChange?.();
-    } catch {}
+    } catch { showError('Failed to start timer'); }
   };
 
   const handleStop = async () => {
@@ -105,12 +108,14 @@ export function TimerBar({ onEntryChange }: { onEntryChange?: () => void }) {
           billable,
         }),
       });
+      const dur = formatDuration(elapsed);
       setRunning(null);
       setDescription('');
       setSelectedProject(null);
       setBillable(false);
+      success(`Time entry saved (${dur})`);
       onEntryChange?.();
-    } catch {}
+    } catch { showError('Failed to stop timer'); }
   };
 
   return (
