@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  avatarUrl     String?
+  timezone      String    @default("UTC")
+  dateFormat    String    @default("MM/DD/YYYY")
+  timeFormat    String    @default("12h")
+  darkMode      Boolean   @default(true)
+  weekStart     String    @default("monday")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workspaces    WorkspaceMember[]
+  timeEntries   TimeEntry[]
+}
+
+model Workspace {
+  id          String    @id @default(uuid())
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  members     WorkspaceMember[]
+  projects    Project[]
+  clients     Client[]
+  tags        Tag[]
+  timeEntries TimeEntry[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  role        String    @default("member") // admin, member
+  userId      String
+  workspaceId String
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Client {
+  id          String    @id @default(uuid())
+  name        String
+  archived    Boolean   @default(false)
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects    Project[]
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  name        String
+  color       String    @default("#E74C3C")
+  billable    Boolean   @default(false)
+  archived    Boolean   @default(false)
+  estimate    Int?      // estimated hours
+  workspaceId String
+  clientId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  timeEntries TimeEntry[]
+}
+
+model Tag {
+  id          String    @id @default(uuid())
+  name        String
+  workspaceId String
+  createdAt   DateTime  @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntryTag[]
+
+  @@unique([name, workspaceId])
+}
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  description String    @default("")
+  start       DateTime
+  stop        DateTime?
+  duration    Int?      // in seconds, null if running
+  billable    Boolean   @default(false)
+  userId      String
+  workspaceId String
+  projectId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  tags        TimeEntryTag[]
+}
+
+model TimeEntryTag {
+  timeEntryId String
+  tagId       String
+
+  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([timeEntryId, tagId])
+}
